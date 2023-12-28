@@ -50,18 +50,18 @@ For example, the following config file contains two Sentinel addresses and two d
 
 ```json
 {
-    "Sentinels_addresses_list":[
+    "SentinelsAddressesList":[
         "node1.local:8001",
         "node2.local:8001"
     ],
     "Databases":[
         {
             "Name":"db1",
-            "Local_port":"12345"
+            "LocalPort":"12345"
         },
         {
             "Name":"db2",
-            "Local_port":"12346"
+            "LocalPort":"12346"
         }
     ]
 }
