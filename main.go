@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/USA-RedDragon/sentinel_tunnel/internal/sentinel_connection"
+	"github.com/USA-RedDragon/sentinel_tunnel/internal/sentinel"
 )
 
 // https://goreleaser.com/cookbooks/using-main.version/
@@ -43,7 +43,7 @@ type SentinelTunnellingConfiguration struct {
 
 type SentinelTunnellingClient struct {
 	configuration      SentinelTunnellingConfiguration
-	sentinelConnection *sentinel_connection.Sentinel_connection
+	sentinelConnection *sentinel.Connection
 }
 
 type GetDBAddressByNameFunction func(dbName string) (string, error)
@@ -63,7 +63,7 @@ func NewSentinelTunnellingClient(config_file_location string) *SentinelTunnellin
 	}
 
 	tunnellingClient.sentinelConnection, err =
-		sentinel_connection.NewSentinelConnection(tunnellingClient.configuration.SentinelsAddressesList)
+		sentinel.NewConnection(tunnellingClient.configuration.SentinelsAddressesList)
 	if err != nil {
 		fatalLog.Printf("an error has occur during sentinel connection creation: %v\n", err.Error())
 		os.Exit(1)
