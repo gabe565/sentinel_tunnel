@@ -140,7 +140,7 @@ func main() {
 	if len(os.Args) < 2 {
 		fatalLog.Printf("not enough arguments\n")
 		fatalLog.Printf("usage: %s <config_file_path>\n", os.Args[0])
-		return
+		os.Exit(1)
 	}
 	stClient, err := NewSentinelTunnellingClient(os.Args[1])
 	if err != nil {
