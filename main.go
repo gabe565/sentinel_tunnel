@@ -32,21 +32,21 @@ var (
 )
 
 type SentinelTunnellingDbConfig struct {
-	Name       string
-	Local_port string
+	Name      string
+	LocalPort string
 }
 
 type SentinelTunnellingConfiguration struct {
-	Sentinels_addresses_list []string
-	Databases                []SentinelTunnellingDbConfig
+	SentinelsAddressesList []string
+	Databases              []SentinelTunnellingDbConfig
 }
 
 type SentinelTunnellingClient struct {
-	configuration       SentinelTunnellingConfiguration
-	sentinel_connection *sentinel_connection.Sentinel_connection
+	configuration      SentinelTunnellingConfiguration
+	sentinelConnection *sentinel_connection.Sentinel_connection
 }
 
-type get_db_address_by_name_function func(db_name string) (string, error)
+type GetDBAddressByNameFunction func(dbName string) (string, error)
 
 func NewSentinelTunnellingClient(config_file_location string) *SentinelTunnellingClient {
 	data, err := os.ReadFile(config_file_location)
@@ -55,15 +55,15 @@ func NewSentinelTunnellingClient(config_file_location string) *SentinelTunnellin
 		os.Exit(1)
 	}
 
-	Tunnelling_client := SentinelTunnellingClient{}
-	err = json.Unmarshal(data, &(Tunnelling_client.configuration))
+	tunnellingClient := SentinelTunnellingClient{}
+	err = json.Unmarshal(data, &(tunnellingClient.configuration))
 	if err != nil {
 		fatalLog.Printf("an error has occur during configuration unmarshal: %v\n", err.Error())
 		os.Exit(1)
 	}
 
-	Tunnelling_client.sentinel_connection, err =
-		sentinel_connection.NewSentinelConnection(Tunnelling_client.configuration.Sentinels_addresses_list)
+	tunnellingClient.sentinelConnection, err =
+		sentinel_connection.NewSentinelConnection(tunnellingClient.configuration.SentinelsAddressesList)
 	if err != nil {
 		fatalLog.Printf("an error has occur during sentinel connection creation: %v\n", err.Error())
 		os.Exit(1)
@@ -71,7 +71,7 @@ func NewSentinelTunnellingClient(config_file_location string) *SentinelTunnellin
 
 	infoLog.Println("done initializing tunnelling")
 
-	return &Tunnelling_client
+	return &tunnellingClient
 }
 
 func createTunnelling(conn1 net.Conn, conn2 net.Conn) {
@@ -80,49 +80,49 @@ func createTunnelling(conn1 net.Conn, conn2 net.Conn) {
 	conn2.Close()
 }
 
-func handleConnection(c net.Conn, db_name string,
-	get_db_address_by_name get_db_address_by_name_function) {
-	db_address, err := get_db_address_by_name(db_name)
+func handleConnection(c net.Conn, dbName string,
+	getDBAddressByName GetDBAddressByNameFunction) {
+	dbAddress, err := getDBAddressByName(dbName)
 	if err != nil {
-		errorLog.Printf("cannot get db address for %s: %v\n", db_name, err.Error())
+		errorLog.Printf("cannot get db address for %s: %v\n", dbName, err.Error())
 		c.Close()
 		return
 	}
-	db_conn, err := net.Dial("tcp", db_address)
+	dbConn, err := net.Dial("tcp", dbAddress)
 	if err != nil {
-		errorLog.Printf("cannot connect to db %s: %v\n", db_name, err.Error())
+		errorLog.Printf("cannot connect to db %s: %v\n", dbName, err.Error())
 		c.Close()
 		return
 	}
-	go createTunnelling(c, db_conn)
-	go createTunnelling(db_conn, c)
+	go createTunnelling(c, dbConn)
+	go createTunnelling(dbConn, c)
 }
 
-func handleSigleDbConnections(listening_port string, db_name string,
-	get_db_address_by_name get_db_address_by_name_function) {
+func handleSingleDbConnections(listeningPort string, dbName string,
+	getDBAddressByName GetDBAddressByNameFunction) {
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", listening_port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", listeningPort))
 	if err != nil {
-		fatalLog.Printf("cannot listen to port %s: %v\n", listening_port, err.Error())
-			listening_port, err.Error())
+		fatalLog.Printf("cannot listen to port %s: %v\n", listeningPort, err.Error())
+		os.Exit(1)
 	}
 
-	infoLog.Printf("listening on port %s for connections to database: %s\n", listening_port, dbName)
+	infoLog.Printf("listening on port %s for connections to database: %s\n", listeningPort, dbName)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fatalLog.Printf("cannot accept connections on port %s: %v\n", listening_port, err.Error())
+			fatalLog.Printf("cannot accept connections on port %s: %v\n", listeningPort, err.Error())
 			os.Exit(1)
 		}
-		go handleConnection(conn, db_name, get_db_address_by_name)
+		go handleConnection(conn, dbName, getDBAddressByName)
 	}
 
 }
 
-func (st_client *SentinelTunnellingClient) Start() {
-	for _, db_conf := range st_client.configuration.Databases {
-		go handleSigleDbConnections(db_conf.Local_port, db_conf.Name,
-			st_client.sentinel_connection.GetAddressByDbName)
+func (stClient *SentinelTunnellingClient) Start() {
+	for _, dbConf := range stClient.configuration.Databases {
+		go handleSingleDbConnections(dbConf.LocalPort, dbConf.Name,
+			stClient.sentinelConnection.GetAddressByDbName)
 	}
 }
 
@@ -133,8 +133,8 @@ func main() {
 		fatalLog.Printf("usage: %s <config_file_path>\n", os.Args[0])
 		return
 	}
-	st_client := NewSentinelTunnellingClient(os.Args[1])
-	st_client.Start()
+	stClient := NewSentinelTunnellingClient(os.Args[1])
+	stClient.Start()
 	for {
 		time.Sleep(1000 * time.Millisecond)
 	}
